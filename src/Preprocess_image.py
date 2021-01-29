@@ -37,11 +37,42 @@ def preprocess_image(image_path, target_size, augmentation=False):
     image = cv2.transpose(background)
     return image
 
-def augmentation():
-    pass
+def augmentation(image_batch, 
+        rotation_range=0, 
+        scale_range=0, 
+        height_shift_range=0, 
+        width_shift_range=0,
+        dilate_range=1, 
+        erode_range=1):
 
-def normalization():
-    pass
+    imgs = image_batch.astype(np.float32)
+    _, h, w = imgs.shape
+
+    dilate_kernel = np.ones((int(np.random.uniform(1, dilate_range)),), np.uint8)
+    erode_kernel = np.ones((int(np.random.uniform(1, erode_range)),), np.uint8)
+    height_shift = np.random.uniform(-height_shift_range, height_shift_range)
+    rotation = np.random.uniform(-rotation_range, rotation_range)
+    scale = np.random.uniform(1 - scale_range, 1)
+    width_shift = np.random.uniform(-width_shift_range, width_shift_range)
+
+    trans_map = np.float32([[1, 0, width_shift * w], [0, 1, height_shift * h]])
+    rot_map = cv2.getRotationMatrix2D((w // 2, h // 2), rotation, scale)
+
+    trans_map_aff = np.r_[trans_map, [[0, 0, 1]]]
+    rot_map_aff = np.r_[rot_map, [[0, 0, 1]]]
+    affine_mat = rot_map_aff.dot(trans_map_aff)[:2, :]
+
+    for i in range(_):
+        imgs[i] = cv2.warpAffine(imgs[i], affine_mat, (w, h), flags=cv2.INTER_NEAREST, borderValue=255)
+        imgs[i] = cv2.erode(imgs[i], erode_kernel, iterations=1)
+        imgs[i] = cv2.dilate(imgs[i], dilate_kernel, iterations=1)
+
+    return imgs
+
+def normalization(image_batch):
+    imgs = image_batch.astype(np.float32)
+    imgs = np.expand_dims(imgs / 255, axis=-1)
+    return imgs
 
 def preprocess_label(text, maxTextLength):
     cost = 0
